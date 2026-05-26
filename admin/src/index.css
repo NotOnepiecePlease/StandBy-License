@@ -1,0 +1,86 @@
+:root {
+  --bg-0: #131320;
+  --bg-0b: #171724;
+  --bg-1: #1e1e2e;
+  --bg-2: #25253a;
+  --bg-3: #2e2e44;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-soft: rgba(255, 255, 255, 0.05);
+
+  --text-1: #f4f4fb;
+  --text-2: #c4c4d6;
+  --text-3: #8585a0;
+  --text-4: #5a5a72;
+
+  --accent: #ff0067;
+  --accent-2: #ff3d8a;
+  --accent-soft: rgba(255, 0, 103, 0.14);
+  --accent-line: rgba(255, 0, 103, 0.42);
+  --purple: #8b5cf6;
+  --purple-soft: #a78bfa;
+  --blue: #5b8def;
+  --ok: #36d399;
+  --warn: #fbbd23;
+  --danger: #f87272;
+
+  --f-display: 'Space Grotesk', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: var(--f-display);
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: inherit; }
+
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-chip:hover { background: var(--bg-3); }
+.filter-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--text-1);
+}
+.filter-chip .count {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  background: var(--bg-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--text-3);
+}
+.filter-chip.active .count { background: rgba(255, 0, 103, 0.3); color: var(--text-1); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
