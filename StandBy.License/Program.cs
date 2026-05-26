@@ -7,7 +7,8 @@ builder.Services.AddControllers();
 var supabaseUrl = (builder.Configuration["Supabase:Url"]
     ?? throw new InvalidOperationException("Supabase:Url não configurado.")).Trim();
 var supabaseKey = (builder.Configuration["Supabase:ServiceRoleKey"]
-    ?? throw new InvalidOperationException("Supabase:ServiceRoleKey não configurado.")).Trim();
+    ?? throw new InvalidOperationException("Supabase:ServiceRoleKey não configurado."))
+    .Replace("\n", "").Replace("\r", "").Trim();
 
 builder.Services.AddHttpClient<LicencaService>(client =>
 {
