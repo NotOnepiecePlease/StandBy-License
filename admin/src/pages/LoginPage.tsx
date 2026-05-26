@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { listar } from '../services/licencas'
 
 interface Props {
 	onLogin: (key: string) => void
@@ -16,14 +17,25 @@ export function LoginPage({ onLogin }: Props) {
 		inputRef.current?.focus()
 	}, [])
 
-	const submit = (e?: React.FormEvent) => {
+	const submit = async (e?: React.FormEvent) => {
 		e?.preventDefault()
 		const v = key.trim()
 		if (!v) { setError('Informe a chave de administrador.'); return }
 		if (v.length < 8) { setError('Chave inválida — mínimo 8 caracteres.'); return }
 		setError('')
 		setLoading(true)
-		setTimeout(() => onLogin(v), 700)
+		try {
+			await listar(v)
+			onLogin(v)
+		} catch (err: unknown) {
+			if (err instanceof Error && err.message === 'unauthorized') {
+				setError('Chave inválida ou sem permissão.')
+			} else {
+				setError('Erro ao conectar com o servidor.')
+			}
+		} finally {
+			setLoading(false)
+		}
 	}
 
 	return (
