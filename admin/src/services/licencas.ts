@@ -63,6 +63,16 @@ export async function revogar(key: string, id: string): Promise<Licenca> {
 	return res.json()
 }
 
+export async function reativar(key: string, id: string): Promise<Licenca> {
+	const res = await fetch(`${API_URL}/api/admin/licencas/${id}/reativar`, {
+		method: 'POST',
+		headers: headers(key),
+	})
+	if (res.status === 401) throw new Error('unauthorized')
+	if (!res.ok) throw new Error(`Erro ${res.status}`)
+	return res.json()
+}
+
 export async function desvincular(key: string, id: string): Promise<Licenca> {
 	const res = await fetch(`${API_URL}/api/admin/licencas/${id}/desvincular`, {
 		method: 'POST',

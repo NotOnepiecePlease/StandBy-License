@@ -79,20 +79,31 @@ public class LicencaService(HttpClient http)
         return MapResponse(licenca);
     }
 
-    public async Task<bool> RevogarAsync(string id)
+    public async Task<LicencaResponse?> RevogarAsync(string id)
     {
         var licenca = await BuscarPorIdAsync(id);
-        if (licenca is null) return false;
+        if (licenca is null) return null;
         await AtualizarAsync(id, new { ativo = false });
-        return true;
+        licenca.Ativo = false;
+        return MapResponse(licenca);
     }
 
-    public async Task<bool> DesvincularMaquinaAsync(string id)
+    public async Task<LicencaResponse?> ReativarAsync(string id)
     {
         var licenca = await BuscarPorIdAsync(id);
-        if (licenca is null) return false;
+        if (licenca is null) return null;
+        await AtualizarAsync(id, new { ativo = true });
+        licenca.Ativo = true;
+        return MapResponse(licenca);
+    }
+
+    public async Task<LicencaResponse?> DesvincularMaquinaAsync(string id)
+    {
+        var licenca = await BuscarPorIdAsync(id);
+        if (licenca is null) return null;
         await AtualizarAsync(id, new { machine_id = (string?)null });
-        return true;
+        licenca.MachineId = null;
+        return MapResponse(licenca);
     }
 
     private async Task<Licenca?> BuscarPorChaveAsync(string chave)

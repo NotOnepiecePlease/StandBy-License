@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { type Licenca, type LicencaStatus, getStatus, listar, criar, renovar, revogar, desvincular } from '../services/licencas'
+import { type Licenca, type LicencaStatus, getStatus, listar, criar, renovar, revogar, reativar, desvincular } from '../services/licencas'
 import { gradientFor, initialsOf, formatDateBR, relativeExpiry } from '../utils/format'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 type ModalState =
 	| { kind: 'renew'; license: Licenca; months: number }
 	| { kind: 'revoke'; license: Licenca }
+	| { kind: 'reactivate'; license: Licenca }
 	| { kind: 'unbind'; license: Licenca }
 	| { kind: 'new' }
 
@@ -99,6 +100,20 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 			setModal(null)
 		} catch {
 			showToast('Erro ao revogar licença.', 'danger')
+		} finally {
+			setBusy(false)
+		}
+	}
+
+	const handleReactivate = async (license: Licenca) => {
+		setBusy(true)
+		try {
+			const updated = await reativar(adminKey, license.id)
+			setLicenses((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+			showToast(`Licença ${license.chave} reativada.`, 'success')
+			setModal(null)
+		} catch {
+			showToast('Erro ao reativar licença.', 'danger')
 		} finally {
 			setBusy(false)
 		}
@@ -278,6 +293,7 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 											index={i}
 											onRenew={() => setModal({ kind: 'renew', license: l, months: 12 })}
 											onRevoke={() => setModal({ kind: 'revoke', license: l })}
+											onReactivate={() => setModal({ kind: 'reactivate', license: l })}
 											onUnbind={() => setModal({ kind: 'unbind', license: l })}
 											onCopy={() => {
 												navigator.clipboard?.writeText(l.chave).catch(() => {})
@@ -312,6 +328,14 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 					busy={busy}
 					onCancel={() => !busy && setModal(null)}
 					onConfirm={() => handleRevoke(modal.license)}
+				/>
+			)}
+			{modal?.kind === 'reactivate' && (
+				<ReactivateModal
+					license={modal.license}
+					busy={busy}
+					onCancel={() => !busy && setModal(null)}
+					onConfirm={() => handleReactivate(modal.license)}
 				/>
 			)}
 			{modal?.kind === 'unbind' && (
@@ -370,9 +394,9 @@ function FilterChip({ active, onClick, count, tone, children }: {
 	)
 }
 
-function LicenseRow({ license: l, index, onRenew, onRevoke, onUnbind, onCopy }: {
+function LicenseRow({ license: l, index, onRenew, onRevoke, onReactivate, onUnbind, onCopy }: {
 	license: Licenca; index: number
-	onRenew: () => void; onRevoke: () => void; onUnbind: () => void; onCopy: () => void
+	onRenew: () => void; onRevoke: () => void; onReactivate: () => void; onUnbind: () => void; onCopy: () => void
 }) {
 	const [copied, setCopied] = useState(false)
 	const status = getStatus(l)
@@ -458,13 +482,22 @@ function LicenseRow({ license: l, index, onRenew, onRevoke, onUnbind, onCopy }: 
 						</svg>
 						Renovar
 					</button>
-					<button className="adm-action revoke" onClick={onRevoke} disabled={isRevoked}>
-						<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-							<circle cx="12" cy="12" r="10" />
-							<line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-						</svg>
-						Revogar
-					</button>
+					{isRevoked ? (
+						<button className="adm-action reactivate" onClick={onReactivate}>
+							<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Reativar
+						</button>
+					) : (
+						<button className="adm-action revoke" onClick={onRevoke}>
+							<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+								<circle cx="12" cy="12" r="10" />
+								<line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+							</svg>
+							Revogar
+						</button>
+					)}
 					<button className="adm-action unbind" onClick={onUnbind} disabled={!l.machineId}>
 						<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
 							<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -674,6 +707,43 @@ function NewLicenseModal({ busy, onCancel, onConfirm }: {
 							</svg>
 						)}
 						{busy ? 'Criando…' : 'Emitir licença'}
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+function ReactivateModal({ license, busy, onCancel, onConfirm }: { license: Licenca; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+	return (
+		<div className="adm-modal-scrim" onClick={onCancel}>
+			<div className="adm-modal success" onClick={(e) => e.stopPropagation()}>
+				<div className="adm-modal-head">
+					<div className="adm-modal-icon">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+							<polyline points="20 6 9 17 4 12" />
+						</svg>
+					</div>
+					<div>
+						<h3 className="adm-modal-title">Reativar licença</h3>
+						<div className="adm-modal-sub">{license.clienteNome}</div>
+					</div>
+				</div>
+				<div className="adm-modal-body">
+					Deseja reativar a licença <span className="key-display">{license.chave}</span> de <strong>{license.clienteNome}</strong>?
+					<div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--text-3)' }}>
+						O cliente voltará a ter acesso ao sistema na próxima validação.
+					</div>
+				</div>
+				<div className="adm-modal-foot">
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-ok" onClick={onConfirm} disabled={busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+						)}
+						{busy ? 'Reativando…' : 'Sim, reativar'}
 					</button>
 				</div>
 			</div>

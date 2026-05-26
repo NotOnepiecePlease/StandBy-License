@@ -44,17 +44,26 @@ public class AdminController(LicencaService licencaService, IConfiguration confi
     public async Task<IActionResult> Revogar(string id)
     {
         if (!AdminAutorizado()) return Unauthorized();
-        var ok = await licencaService.RevogarAsync(id);
-        if (!ok) return NotFound();
-        return NoContent();
+        var licenca = await licencaService.RevogarAsync(id);
+        if (licenca is null) return NotFound();
+        return Ok(licenca);
+    }
+
+    [HttpPost("{id}/reativar")]
+    public async Task<IActionResult> Reativar(string id)
+    {
+        if (!AdminAutorizado()) return Unauthorized();
+        var licenca = await licencaService.ReativarAsync(id);
+        if (licenca is null) return NotFound();
+        return Ok(licenca);
     }
 
     [HttpPost("{id}/desvincular")]
     public async Task<IActionResult> DesvincularMaquina(string id)
     {
         if (!AdminAutorizado()) return Unauthorized();
-        var ok = await licencaService.DesvincularMaquinaAsync(id);
-        if (!ok) return NotFound();
-        return NoContent();
+        var licenca = await licencaService.DesvincularMaquinaAsync(id);
+        if (licenca is null) return NotFound();
+        return Ok(licenca);
     }
 }
