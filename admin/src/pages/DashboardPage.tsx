@@ -25,6 +25,7 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 	const [filter, setFilter] = useState<'todas' | LicencaStatus>('todas')
 	const [query, setQuery] = useState('')
 	const [modal, setModal] = useState<ModalState | null>(null)
+	const [busy, setBusy] = useState(false)
 	const [toast, setToast] = useState<Toast | null>(null)
 
 	const showToast = useCallback((msg: string, kind: Toast['kind'] = 'success') => {
@@ -76,47 +77,59 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 	}, [licenses, filter, query])
 
 	const handleRenew = async (license: Licenca, months: number) => {
+		setBusy(true)
 		try {
 			const updated = await renovar(adminKey, license.id, months)
 			setLicenses((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
 			showToast(`Licença renovada por ${months} ${months === 1 ? 'mês' : 'meses'}.`, 'success')
+			setModal(null)
 		} catch {
 			showToast('Erro ao renovar licença.', 'danger')
+		} finally {
+			setBusy(false)
 		}
-		setModal(null)
 	}
 
 	const handleRevoke = async (license: Licenca) => {
+		setBusy(true)
 		try {
 			const updated = await revogar(adminKey, license.id)
 			setLicenses((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
 			showToast(`Licença ${license.chave} revogada.`, 'danger')
+			setModal(null)
 		} catch {
 			showToast('Erro ao revogar licença.', 'danger')
+		} finally {
+			setBusy(false)
 		}
-		setModal(null)
 	}
 
 	const handleUnbind = async (license: Licenca) => {
+		setBusy(true)
 		try {
 			const updated = await desvincular(adminKey, license.id)
 			setLicenses((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
 			showToast(`Máquina desvinculada de ${license.chave}.`, 'purple')
+			setModal(null)
 		} catch {
 			showToast('Erro ao desvincular máquina.', 'danger')
+		} finally {
+			setBusy(false)
 		}
-		setModal(null)
 	}
 
 	const handleCreate = async (clienteNome: string, months: number) => {
+		setBusy(true)
 		try {
 			const nova = await criar(adminKey, clienteNome, months)
 			setLicenses((prev) => [nova, ...prev])
 			showToast(`Licença criada para ${clienteNome}.`, 'success')
+			setModal(null)
 		} catch {
 			showToast('Erro ao criar licença.', 'danger')
+		} finally {
+			setBusy(false)
 		}
-		setModal(null)
 	}
 
 	return (
@@ -287,28 +300,32 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 				<RenewModal
 					license={modal.license}
 					months={modal.months}
+					busy={busy}
 					onMonthsChange={(m) => setModal({ ...modal, months: m })}
-					onCancel={() => setModal(null)}
+					onCancel={() => !busy && setModal(null)}
 					onConfirm={() => handleRenew(modal.license, modal.months)}
 				/>
 			)}
 			{modal?.kind === 'revoke' && (
 				<RevokeModal
 					license={modal.license}
-					onCancel={() => setModal(null)}
+					busy={busy}
+					onCancel={() => !busy && setModal(null)}
 					onConfirm={() => handleRevoke(modal.license)}
 				/>
 			)}
 			{modal?.kind === 'unbind' && (
 				<UnbindModal
 					license={modal.license}
-					onCancel={() => setModal(null)}
+					busy={busy}
+					onCancel={() => !busy && setModal(null)}
 					onConfirm={() => handleUnbind(modal.license)}
 				/>
 			)}
 			{modal?.kind === 'new' && (
 				<NewLicenseModal
-					onCancel={() => setModal(null)}
+					busy={busy}
+					onCancel={() => !busy && setModal(null)}
 					onConfirm={handleCreate}
 				/>
 			)}
@@ -396,6 +413,7 @@ function LicenseRow({ license: l, index, onRenew, onRevoke, onUnbind, onCopy }: 
 					<div className="avatar" style={{ background: gradientFor(index) }}>{initialsOf(l.clienteNome)}</div>
 					<div>
 						<div className="name">{l.clienteNome}</div>
+						{l.criadoEm && <div className="sub">desde {formatDateBR(l.criadoEm)}</div>}
 					</div>
 				</div>
 			</td>
@@ -461,8 +479,8 @@ function LicenseRow({ license: l, index, onRenew, onRevoke, onUnbind, onCopy }: 
 	)
 }
 
-function RenewModal({ license, months, onMonthsChange, onCancel, onConfirm }: {
-	license: Licenca; months: number
+function RenewModal({ license, months, busy, onMonthsChange, onCancel, onConfirm }: {
+	license: Licenca; months: number; busy: boolean
 	onMonthsChange: (m: number) => void; onCancel: () => void; onConfirm: () => void
 }) {
 	const options = [1, 3, 6, 12]
@@ -501,12 +519,14 @@ function RenewModal({ license, months, onMonthsChange, onCancel, onConfirm }: {
 					</div>
 				</div>
 				<div className="adm-modal-foot">
-					<button className="adm-btn adm-btn-ghost" onClick={onCancel}>Cancelar</button>
-					<button className="adm-btn adm-btn-ok" onClick={onConfirm}>
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-							<polyline points="20 6 9 17 4 12" />
-						</svg>
-						Confirmar renovação
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-ok" onClick={onConfirm} disabled={busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+						)}
+						{busy ? 'Renovando…' : 'Confirmar renovação'}
 					</button>
 				</div>
 			</div>
@@ -514,7 +534,7 @@ function RenewModal({ license, months, onMonthsChange, onCancel, onConfirm }: {
 	)
 }
 
-function RevokeModal({ license, onCancel, onConfirm }: { license: Licenca; onCancel: () => void; onConfirm: () => void }) {
+function RevokeModal({ license, busy, onCancel, onConfirm }: { license: Licenca; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
 	return (
 		<div className="adm-modal-scrim" onClick={onCancel}>
 			<div className="adm-modal danger" onClick={(e) => e.stopPropagation()}>
@@ -542,13 +562,15 @@ function RevokeModal({ license, onCancel, onConfirm }: { license: Licenca; onCan
 					</div>
 				</div>
 				<div className="adm-modal-foot">
-					<button className="adm-btn adm-btn-ghost" onClick={onCancel}>Cancelar</button>
-					<button className="adm-btn adm-btn-danger" onClick={onConfirm}>
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-							<circle cx="12" cy="12" r="10" />
-							<line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-						</svg>
-						Sim, revogar agora
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-danger" onClick={onConfirm} disabled={busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+								<circle cx="12" cy="12" r="10" />
+								<line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+							</svg>
+						)}
+						{busy ? 'Revogando…' : 'Sim, revogar agora'}
 					</button>
 				</div>
 			</div>
@@ -556,7 +578,7 @@ function RevokeModal({ license, onCancel, onConfirm }: { license: Licenca; onCan
 	)
 }
 
-function UnbindModal({ license, onCancel, onConfirm }: { license: Licenca; onCancel: () => void; onConfirm: () => void }) {
+function UnbindModal({ license, busy, onCancel, onConfirm }: { license: Licenca; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
 	return (
 		<div className="adm-modal-scrim" onClick={onCancel}>
 			<div className="adm-modal warning" onClick={(e) => e.stopPropagation()}>
@@ -580,12 +602,14 @@ function UnbindModal({ license, onCancel, onConfirm }: { license: Licenca; onCan
 					</div>
 				</div>
 				<div className="adm-modal-foot">
-					<button className="adm-btn adm-btn-ghost" onClick={onCancel}>Cancelar</button>
-					<button className="adm-btn adm-btn-purple" onClick={onConfirm}>
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-							<polyline points="20 6 9 17 4 12" />
-						</svg>
-						Desvincular
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-purple" onClick={onConfirm} disabled={busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+						)}
+						{busy ? 'Desvinculando…' : 'Desvincular'}
 					</button>
 				</div>
 			</div>
@@ -593,8 +617,8 @@ function UnbindModal({ license, onCancel, onConfirm }: { license: Licenca; onCan
 	)
 }
 
-function NewLicenseModal({ onCancel, onConfirm }: {
-	onCancel: () => void; onConfirm: (clienteNome: string, months: number) => void
+function NewLicenseModal({ busy, onCancel, onConfirm }: {
+	busy: boolean; onCancel: () => void; onConfirm: (clienteNome: string, months: number) => void
 }) {
 	const [clienteNome, setClienteNome] = useState('')
 	const [months, setMonths] = useState(12)
@@ -642,12 +666,14 @@ function NewLicenseModal({ onCancel, onConfirm }: {
 					</div>
 				</div>
 				<div className="adm-modal-foot">
-					<button className="adm-btn adm-btn-ghost" onClick={onCancel}>Cancelar</button>
-					<button className="adm-btn adm-btn-ok" onClick={() => onConfirm(clienteNome.trim(), months)} disabled={!clienteNome.trim()}>
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-							<polyline points="20 6 9 17 4 12" />
-						</svg>
-						Emitir licença
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-ok" onClick={() => onConfirm(clienteNome.trim(), months)} disabled={!clienteNome.trim() || busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+						)}
+						{busy ? 'Criando…' : 'Emitir licença'}
 					</button>
 				</div>
 			</div>

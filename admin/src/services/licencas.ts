@@ -7,14 +7,16 @@ export interface Licenca {
 	clienteNome: string
 	expiraEm: string
 	ativo: boolean
-	expirada: boolean
+	expirada?: boolean
+	criadoEm: string
 }
 
 export type LicencaStatus = 'ativa' | 'expirada' | 'revogada'
 
 export function getStatus(l: Licenca): LicencaStatus {
 	if (!l.ativo) return 'revogada'
-	if (l.expirada) return 'expirada'
+	const expired = l.expirada ?? new Date(l.expiraEm) < new Date()
+	if (expired) return 'expirada'
 	return 'ativa'
 }
 
