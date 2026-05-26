@@ -1,0 +1,14 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+
+## Secrets — NUNCA commitar
+## appsettings.json vai pro git SÓ com valores vazios/placeholder
+## appsettings.Development.json fica local com credenciais reais
+appsettings.*.json
+
+## OS
+.DS_Store
+Thumbs.db
