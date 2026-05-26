@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { type Licenca, type LicencaStatus, getStatus, listar, criar, renovar, revogar, reativar, desvincular } from '../services/licencas'
+import { type Licenca, type LicencaStatus, getStatus, listar, criar, renovar, revogar, reativar, desvincular, deletar } from '../services/licencas'
 import { gradientFor, initialsOf, formatDateBR, relativeExpiry } from '../utils/format'
 
 interface Props {
@@ -11,6 +11,7 @@ type ModalState =
 	| { kind: 'renew'; license: Licenca; months: number }
 	| { kind: 'revoke'; license: Licenca }
 	| { kind: 'reactivate'; license: Licenca }
+	| { kind: 'delete'; license: Licenca }
 	| { kind: 'unbind'; license: Licenca }
 	| { kind: 'new' }
 
@@ -114,6 +115,20 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 			setModal(null)
 		} catch {
 			showToast('Erro ao reativar licença.', 'danger')
+		} finally {
+			setBusy(false)
+		}
+	}
+
+	const handleDelete = async (license: Licenca) => {
+		setBusy(true)
+		try {
+			await deletar(adminKey, license.id)
+			setLicenses((prev) => prev.filter((l) => l.id !== license.id))
+			showToast(`Licença ${license.chave} apagada.`, 'danger')
+			setModal(null)
+		} catch {
+			showToast('Erro ao apagar licença.', 'danger')
 		} finally {
 			setBusy(false)
 		}
@@ -294,6 +309,7 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 											onRenew={() => setModal({ kind: 'renew', license: l, months: 12 })}
 											onRevoke={() => setModal({ kind: 'revoke', license: l })}
 											onReactivate={() => setModal({ kind: 'reactivate', license: l })}
+											onDelete={() => setModal({ kind: 'delete', license: l })}
 											onUnbind={() => setModal({ kind: 'unbind', license: l })}
 											onCopy={() => {
 												navigator.clipboard?.writeText(l.chave).catch(() => {})
@@ -328,6 +344,14 @@ export function DashboardPage({ adminKey, onLogout }: Props) {
 					busy={busy}
 					onCancel={() => !busy && setModal(null)}
 					onConfirm={() => handleRevoke(modal.license)}
+				/>
+			)}
+			{modal?.kind === 'delete' && (
+				<DeleteModal
+					license={modal.license}
+					busy={busy}
+					onCancel={() => !busy && setModal(null)}
+					onConfirm={() => handleDelete(modal.license)}
 				/>
 			)}
 			{modal?.kind === 'reactivate' && (
@@ -394,9 +418,9 @@ function FilterChip({ active, onClick, count, tone, children }: {
 	)
 }
 
-function LicenseRow({ license: l, index, onRenew, onRevoke, onReactivate, onUnbind, onCopy }: {
+function LicenseRow({ license: l, index, onRenew, onRevoke, onReactivate, onUnbind, onDelete, onCopy }: {
 	license: Licenca; index: number
-	onRenew: () => void; onRevoke: () => void; onReactivate: () => void; onUnbind: () => void; onCopy: () => void
+	onRenew: () => void; onRevoke: () => void; onReactivate: () => void; onUnbind: () => void; onDelete: () => void; onCopy: () => void
 }) {
 	const [copied, setCopied] = useState(false)
 	const status = getStatus(l)
@@ -498,6 +522,15 @@ function LicenseRow({ license: l, index, onRenew, onRevoke, onReactivate, onUnbi
 							Revogar
 						</button>
 					)}
+					<button className="adm-action delete" onClick={onDelete}>
+						<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+							<polyline points="3 6 5 6 21 6" />
+							<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+							<path d="M10 11v6M14 11v6" />
+							<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+						</svg>
+						Apagar
+					</button>
 					<button className="adm-action unbind" onClick={onUnbind} disabled={!l.machineId}>
 						<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
 							<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -707,6 +740,52 @@ function NewLicenseModal({ busy, onCancel, onConfirm }: {
 							</svg>
 						)}
 						{busy ? 'Criando…' : 'Emitir licença'}
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+function DeleteModal({ license, busy, onCancel, onConfirm }: { license: Licenca; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+	return (
+		<div className="adm-modal-scrim" onClick={onCancel}>
+			<div className="adm-modal danger" onClick={(e) => e.stopPropagation()}>
+				<div className="adm-modal-head">
+					<div className="adm-modal-icon">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+							<polyline points="3 6 5 6 21 6" />
+							<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+							<path d="M10 11v6M14 11v6" />
+							<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+						</svg>
+					</div>
+					<div>
+						<h3 className="adm-modal-title">Apagar licença</h3>
+						<div className="adm-modal-sub">Remoção permanente</div>
+					</div>
+				</div>
+				<div className="adm-modal-body">
+					Você está prestes a apagar permanentemente a licença <span className="key-display">{license.chave}</span> de <strong>{license.clienteNome}</strong>.
+					<div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(248, 114, 114, 0.08)', border: '1px solid rgba(248, 114, 114, 0.25)', borderRadius: 9, fontSize: 13, color: 'var(--text-2)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 2 }}>
+							<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+							<line x1="12" y1="9" x2="12" y2="13" />
+							<line x1="12" y1="17" x2="12.01" y2="17" />
+						</svg>
+						<div>O registro será <strong>removido do banco de dados</strong>. Esta ação não pode ser desfeita.</div>
+					</div>
+				</div>
+				<div className="adm-modal-foot">
+					<button className="adm-btn adm-btn-ghost" onClick={onCancel} disabled={busy}>Cancelar</button>
+					<button className="adm-btn adm-btn-danger" onClick={onConfirm} disabled={busy}>
+						{busy ? <span className="spinner" style={{ width: 13, height: 13 }} /> : (
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+								<polyline points="3 6 5 6 21 6" />
+								<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+							</svg>
+						)}
+						{busy ? 'Apagando…' : 'Sim, apagar'}
 					</button>
 				</div>
 			</div>

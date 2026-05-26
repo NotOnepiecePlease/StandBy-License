@@ -58,6 +58,15 @@ public class AdminController(LicencaService licencaService, IConfiguration confi
         return Ok(licenca);
     }
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Deletar(string id)
+    {
+        if (!AdminAutorizado()) return Unauthorized();
+        var ok = await licencaService.DeletarAsync(id);
+        if (!ok) return NotFound();
+        return NoContent();
+    }
+
     [HttpPost("{id}/desvincular")]
     public async Task<IActionResult> DesvincularMaquina(string id)
     {

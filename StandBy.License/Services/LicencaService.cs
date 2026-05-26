@@ -122,6 +122,15 @@ public class LicencaService(HttpClient http)
         return lista?.FirstOrDefault();
     }
 
+    public async Task<bool> DeletarAsync(string id)
+    {
+        var licenca = await BuscarPorIdAsync(id);
+        if (licenca is null) return false;
+        var res = await http.DeleteAsync($"licencas?id=eq.{Uri.EscapeDataString(id)}");
+        res.EnsureSuccessStatusCode();
+        return true;
+    }
+
     private async Task AtualizarAsync(string id, object payload)
     {
         var req = new HttpRequestMessage(new HttpMethod("PATCH"), $"licencas?id=eq.{Uri.EscapeDataString(id)}")
