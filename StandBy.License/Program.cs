@@ -4,6 +4,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"];
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+            policy.WithOrigins(allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        else
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
 var supabaseUrl = (builder.Configuration["Supabase:Url"]
     ?? throw new InvalidOperationException("Supabase:Url não configurado.")).Trim();
 var supabaseKey = (builder.Configuration["Supabase:ServiceRoleKey"]
@@ -21,6 +35,7 @@ builder.Services.AddHttpClient<LicencaService>(client =>
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+app.UseCors();
 app.MapControllers();
 
 app.Run();
