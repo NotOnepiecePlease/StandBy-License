@@ -4,10 +4,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-var supabaseUrl = builder.Configuration["Supabase:Url"]
-    ?? throw new InvalidOperationException("Supabase:Url não configurado.");
-var supabaseKey = builder.Configuration["Supabase:ServiceRoleKey"]
-    ?? throw new InvalidOperationException("Supabase:ServiceRoleKey não configurado.");
+var supabaseUrl = (builder.Configuration["Supabase:Url"]
+    ?? throw new InvalidOperationException("Supabase:Url não configurado.")).Trim();
+var supabaseKey = (builder.Configuration["Supabase:ServiceRoleKey"]
+    ?? throw new InvalidOperationException("Supabase:ServiceRoleKey não configurado.")).Trim();
 
 builder.Services.AddHttpClient<LicencaService>(client =>
 {
