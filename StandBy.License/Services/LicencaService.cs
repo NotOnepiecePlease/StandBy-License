@@ -101,7 +101,12 @@ public class LicencaService(HttpClient http)
     {
         var licenca = await BuscarPorIdAsync(id);
         if (licenca is null) return null;
-        await AtualizarAsync(id, new { machine_id = (string?)null });
+        var req = new HttpRequestMessage(new HttpMethod("PATCH"), $"licencas?id=eq.{Uri.EscapeDataString(id)}")
+        {
+            Content = new StringContent("""{"machine_id":null}""", System.Text.Encoding.UTF8, "application/json")
+        };
+        var res = await http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
         licenca.MachineId = null;
         return MapResponse(licenca);
     }
